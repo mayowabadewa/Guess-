@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Guessing Game - Real-time Multiplayer</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #333;
+        }
+
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            width: 90%;
+            max-width: 800px;
+            min-height: 600px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .game-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            font-size: 0.9rem;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        .welcome-screen {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .welcome-screen h2 {
+            margin-bottom: 20px;
+            color: #667eea;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e1e1;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 10px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn:disabled {
+            background: #ccc;
+            transform: none;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #6c757d;
+        }
+
+        .game-area {
+            display: none;
+            flex: 1;
+            flex-direction: column;
+        }
+
+        .players-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .players-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .player-card {
+            background: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            font-size: 0.9rem;
+        }
+
+        .player-card.master {
+            background: linear-gradient(135deg, #ffd700, #ffed4a);
+            color: #333;
+        }
+
+        .chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            border: 2px solid #e1e1e1;
+            border-radius: 10px;
+            min-height: 300px;
+        }
+
+        .messages {
+            flex: 1;
+            padding: 15px;
+            overflow-y: auto;
+            max-height: 300px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px 12px;
+            border-radius: 8px;
+            animation: slideIn 0.3s ease-in;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .message.system {
+            background: #e3f2fd;
+            color: #1976d2;
+            font-style: italic;
+        }
+
+        .message.player {
+            background: #f3e5f5;
+            color: #7b1fa2;
+        }
+
+        .message.master {
+            background: #fff3e0;
+            color: #f57c00;
+        }
+
+        .message.winner {
+            background: #e8f5e8;
+            color: #2e7d32;
+            font-weight: bold;
+        }
+
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .input-area {
+            padding: 15px;
+            border-top: 1px solid #e1e1e1;
+            background: #f8f9fa;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        .master-controls {
+            background: #fff9c4;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .question-form {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .timer {
+            position: absolute;
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255,255,255,0.2);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: bold;
+        }
+
+        .attempts {
+            background: #fff3cd;
+            border-radius: 5px;
+            padding: 5px 10px;
+            margin-top: 5px;
+            font-size: 0.8rem;
+            color: #856404;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                width: 95%;
+                min-height: 90vh;
+            }
+
+            .header h1 {
+                font-size: 1.5rem;
+            }
+
+            .game-info {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1><i class="fas fa-gamepad"></i> Guessing Game</h1>
+            <div class="game-info">
+                <div>
+                    <i class="fas fa-users"></i> 
+                    <span id="playerCount">0</span> Players
+                </div>
+                <div id="sessionInfo"></div>
+                <div class="timer" id="timer" style="display: none;">
+                    <i class="fas fa-clock"></i> <span id="timeLeft">60</span>s
+                </div>
+            </div>
+        </div>
+
+        <div class="main-content">
+            <!-- Welcome Screen -->
+            <div id="welcomeScreen" class="welcome-screen">
+                <h2>Welcome to the Guessing Game!</h2>
+                <p>Create a new game or join an existing one to start playing with friends.</p>
+                <p><strong>Note:</strong> You need at least 3 players total (1 game master + 2 players) to start playing.</p>
+                
+                <div class="form-group">
+                    <label for="playerName">Your Name:</label>
+                    <input type="text" id="playerName" placeholder="Enter your name" maxlength="20">
+                </div>
+
+                <div class="form-group">
+                    <label for="sessionId">Session ID (to join existing game):</label>
+                    <input type="text" id="sessionId" placeholder="Enter session ID or leave empty to create new">
+                </div>
+
+                <div>
+                    <button class="btn" onclick="createOrJoinGame()">
+                        <i class="fas fa-play"></i> Start Game
+                    </button>
+                </div>
+            </div>
+
+            <!-- Game Area -->
+            <div id="gameArea" class="game-area">
+                <!-- Players Section -->
+                <div class="players-section">
+                    <h3><i class="fas fa-users"></i> Players & Scores</h3>
+                    <div class="players-list" id="playersList"></div>
+                </div>
+
+                <!-- Master Controls -->
+                <div id="masterControls" class="master-controls" style="display: none;">
+                    <h4><i class="fas fa-crown"></i> Game Master Controls</h4>
+                    <div class="question-form">
+                        <input type="text" id="questionInput" placeholder="Enter your question" maxlength="200">
+                        <input type="text" id="answerInput" placeholder="Enter the answer" maxlength="100">
+                        <div>
+                            <button class="btn" onclick="setQuestion()">
+                                <i class="fas fa-check"></i> Set Question
+                            </button>
+                            <button class="btn" id="startGameBtn" onclick="startGame()" disabled>
+                                <i class="fas fa-play"></i> Start Game
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chat/Game Area -->
+                <div class="chat-area">
+                    <div class="messages" id="messages"></div>
+                    <div class="input-area">
+                        <div class="input-group">
+                            <input type="text" id="guessInput" placeholder="Enter your guess..." maxlength="100" disabled>
+                            <button class="btn" onclick="makeGuess()" id="guessBtn" disabled>
+                                <i class="fas fa-paper-plane"></i> Guess
+                            </button>
+                        </div>
+                        <div id="attemptsInfo" class="attempts" style="display: none;"></div>
+                    </div>
+                </div>
+
+                <div style="margin-top: 20px; text-align: center;">
+                    <button class="btn btn-secondary" onclick="leaveGame()">
+                        <i class="fas fa-sign-out-alt"></i> Leave Game
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.4/socket.io.js"></script>
+    <script src="js/game.js"></script>
+</body>
+</html>

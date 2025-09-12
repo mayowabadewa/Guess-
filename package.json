@@ -1,0 +1,31 @@
+{
+  "name": "guess-",
+  "version": "1.0.0",
+  "description": "A guessing game made with Express",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js",
+    "dev": "nodemon server.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mayowabadewa/Guess-.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/mayowabadewa/Guess-/issues"
+  },
+  "homepage": "https://github.com/mayowabadewa/Guess-#readme",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "express-rate-limit": "^8.1.0",
+    "helmet": "^8.1.0",
+    "nodemon": "^3.1.10",
+    "socket.io": "^4.8.1",
+    "uuid": "^13.0.0"
+  }
+}
