@@ -71,12 +71,15 @@ function handleSocketConnections(io) {
             gameState: gameSession.getGameState()
           });
 
-          // Notify about new master after a delay
+          // Handle master assignment after a delay
           setTimeout(() => {
-            io.to(sessionId).emit('new-master-assigned', {
-              newMaster: gameSession.masterName,
-              gameState: gameSession.getGameState()
-            });
+            const masterAssignment = gameSession.prepareNextRound();
+            if (masterAssignment.success) {
+              io.to(sessionId).emit('new-master-assigned', {
+                newMaster: masterAssignment.newMaster,
+                gameState: gameSession.getGameState()
+              });
+            }
           }, 3000);
         }, gameSession.timeLimit);
 
@@ -122,7 +125,7 @@ function handleSocketConnections(io) {
           gameState: gameSession.getGameState()
         });
 
-        console.log(`Question set in session ${sessionId}`);
+        console.log(`Question set in session ${sessionId} by master ${gameSession.masterName}`);
 
       } catch (error) {
         console.error('Error setting question:', error);
@@ -178,12 +181,19 @@ function handleSocketConnections(io) {
             gameState: gameSession.getGameState()
           });
 
-          // Notify about new master after a delay
+          // Handle master assignment after a delay
           setTimeout(() => {
-            io.to(sessionId).emit('new-master-assigned', {
-              newMaster: gameSession.masterName,
-              gameState: gameSession.getGameState()
-            });
+            const masterAssignment = gameSession.prepareNextRound();
+            if (masterAssignment.success) {
+              io.to(sessionId).emit('new-master-assigned', {
+                newMaster: masterAssignment.newMaster,
+                gameState: gameSession.getGameState()
+              });
+              
+              console.log(`New master assigned in session ${sessionId}: ${masterAssignment.newMaster}`);
+            } else {
+              console.log(`Failed to assign new master in session ${sessionId}`);
+            }
           }, 3000);
 
           console.log(`Player ${playerId} won in session ${sessionId}`);
@@ -201,6 +211,7 @@ function handleSocketConnections(io) {
         if (socket.sessionId && socket.playerId) {
           const gameSession = GameController.getGameSession(socket.sessionId);
           if (gameSession) {
+            const wasCurrentMaster = gameSession.masterId === socket.playerId;
             const isEmpty = gameSession.removePlayer(socket.playerId);
             
             if (isEmpty) {
@@ -213,9 +224,8 @@ function handleSocketConnections(io) {
                 gameState: gameSession.getGameState()
               });
 
-              // If master changed, notify players about new master
-              const currentMaster = gameSession.players.get(gameSession.masterId);
-              if (currentMaster && gameSession.masterId !== socket.playerId) {
+              // If the master left and a new one was assigned, notify players
+              if (wasCurrentMaster && gameSession.masterId !== socket.playerId) {
                 io.to(socket.sessionId).emit('new-master-assigned', {
                   newMaster: gameSession.masterName,
                   gameState: gameSession.getGameState()
@@ -238,6 +248,7 @@ function handleSocketConnections(io) {
         if (socket.sessionId && socket.playerId) {
           const gameSession = GameController.getGameSession(socket.sessionId);
           if (gameSession) {
+            const wasCurrentMaster = gameSession.masterId === socket.playerId;
             const isEmpty = gameSession.removePlayer(socket.playerId);
             
             if (isEmpty) {
@@ -250,9 +261,8 @@ function handleSocketConnections(io) {
                 gameState: gameSession.getGameState()
               });
 
-              // If master changed, notify players about new master
-              const currentMaster = gameSession.players.get(gameSession.masterId);
-              if (currentMaster && gameSession.masterId !== socket.playerId) {
+              // If the master left and a new one was assigned, notify players
+              if (wasCurrentMaster && gameSession.masterId !== socket.playerId) {
                 socket.to(socket.sessionId).emit('new-master-assigned', {
                   newMaster: gameSession.masterName,
                   gameState: gameSession.getGameState()

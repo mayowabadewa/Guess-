@@ -46,6 +46,7 @@ class GameSession {
       this.masterQueue.push(playerId);
     }
 
+    console.log(`Player added: ${playerName}, Master queue:`, this.masterQueue);
     return player;
   }
 
@@ -68,12 +69,14 @@ class GameSession {
   }
 
   assignNewMaster() {
+    console.log('Assigning new master. Queue before:', this.masterQueue);
+    
     if (this.masterQueue.length > 0) {
       const newMasterId = this.masterQueue.shift();
       const newMaster = this.players.get(newMasterId);
       
       if (newMaster) {
-        // Update old master - add to end of queue
+        // Update old master - add to end of queue if they're still in the game
         const oldMaster = this.players.get(this.masterId);
         if (oldMaster) {
           oldMaster.isMaster = false;
@@ -86,17 +89,22 @@ class GameSession {
         this.masterName = newMaster.name;
         this.status = 'waiting';
         this.resetGame();
-        return true;
+        
+        console.log(`New master assigned: ${this.masterName}, Queue after:`, this.masterQueue);
+        return { success: true, newMaster: this.masterName };
       }
     } else if (this.players.size > 1) {
       // If queue is empty, rebuild it with all non-master players
       this.rebuildMasterQueue();
       return this.assignNewMaster();
     }
-    return false;
+    
+    console.log('Failed to assign new master');
+    return { success: false };
   }
 
   rebuildMasterQueue() {
+    console.log('Rebuilding master queue');
     this.masterQueue = [];
     this.players.forEach((player, playerId) => {
       if (playerId !== this.masterId) {
@@ -105,6 +113,7 @@ class GameSession {
     });
     // Shuffle the queue for randomness
     this.shuffleArray(this.masterQueue);
+    console.log('Master queue rebuilt:', this.masterQueue);
   }
 
   shuffleArray(array) {
@@ -204,12 +213,14 @@ class GameSession {
       scores: this.getScores()
     };
 
-    // Automatically assign new master after a short delay
-    setTimeout(() => {
-      this.assignNewMaster();
-    }, 100);
-
+    // Don't automatically assign new master here - let the socket controller handle it
     return result;
+  }
+
+  // New method to handle master assignment after game end
+  prepareNextRound() {
+    const masterAssignment = this.assignNewMaster();
+    return masterAssignment;
   }
 
   resetGame() {

@@ -147,15 +147,26 @@ class GuessingGame {
             this.addMessage('A player left the game', 'system');
         });
 
-        this.socket.on('master-changed', (data) => {
+        // Fixed event handler for master assignment
+        this.socket.on('new-master-assigned', (data) => {
+            console.log('New master assigned:', data);
             this.updateGameState(data.gameState);
-            this.addMessage(`${data.newMaster} is now the game master`, 'system');
+            
+            if (data.gameState.masterId === this.playerId) {
+                this.addMessage(`🎭 You are now the game master! Set a question to start the next round.`, 'master');
+                // Clear previous question/answer when becoming master
+                this.questionInput.value = '';
+                this.answerInput.value = '';
+                this.startGameBtn.disabled = true;
+            } else {
+                this.addMessage(`🎭 ${data.newMaster} is now the game master`, 'system');
+            }
         });
 
         this.socket.on('question-set', (data) => {
             this.updateGameState(data.gameState);
             this.startGameBtn.disabled = !data.canStart;
-            this.addMessage('Question set! Ready to start the game.', 'master');
+            this.addMessage('Question set! You can now start the game.', 'master');
         });
 
         this.socket.on('question-prepared', (data) => {
@@ -166,30 +177,31 @@ class GuessingGame {
         this.socket.on('game-started', (data) => {
             this.updateGameState(data.gameState);
             this.startGameTimer();
-            this.addMessage(`Game started! Question: ${data.gameState.question}`, 'system');
+            this.addMessage(`🎮 Game started! Question: "${data.gameState.question}"`, 'system');
             this.addMessage('You have 3 attempts to guess the answer!', 'system');
+            this.resetAttempts();
         });
 
         this.socket.on('guess-result', (data) => {
             const result = data.result;
             if (result.isCorrect) {
-                this.addMessage('🎉 Correct! You won!', 'winner');
+                this.addMessage('🎉 Correct! You won this round!', 'winner');
                 this.disableGuessing();
             } else {
                 this.attempts = result.totalAttempts;
                 const attemptsLeft = result.attemptsLeft;
-                this.addMessage(`Incorrect guess. ${attemptsLeft} attempts left.`, 'player');
+                this.addMessage(`❌ Incorrect guess. ${attemptsLeft} attempts left.`, 'player');
                 this.updateAttemptsDisplay(attemptsLeft);
                 
                 if (attemptsLeft === 0) {
                     this.disableGuessing();
-                    this.addMessage('No more attempts left. Wait for the game to end.', 'system');
+                    this.addMessage('No more attempts left. Wait for the round to end.', 'system');
                 }
             }
         });
 
         this.socket.on('player-guessed', (data) => {
-            this.addMessage(`${data.playerName} made a guess`, 'system');
+            this.addMessage(`💭 ${data.playerName} made a guess`, 'system');
         });
 
         this.socket.on('game-ended', (data) => {
@@ -199,13 +211,13 @@ class GuessingGame {
             
             if (data.reason === 'correct-answer') {
                 if (data.winner) {
-                    this.addMessage(`🏆 ${data.winner.name} won! The answer was: "${data.answer}"`, 'winner');
+                    this.addMessage(`🏆 ${data.winner.name} won this round! The answer was: "${data.answer}"`, 'winner');
                 }
             } else if (data.reason === 'timeout') {
                 this.addMessage(`⏰ Time's up! The answer was: "${data.answer}"`, 'system');
             }
             
-            this.resetForNextRound();
+            this.addMessage('🔄 Preparing next round... New game master will be assigned shortly.', 'system');
         });
 
         this.socket.on('game-state', (data) => {
@@ -237,7 +249,16 @@ class GuessingGame {
             this.guessBtn.disabled = this.isMaster;
             
             if (this.isMaster) {
-                this.addMessage('You are the game master. Wait for players to guess!', 'master');
+                this.addMessage('🎭 You are the game master. Wait for players to guess!', 'master');
+            }
+        } else if (gameState.status === 'waiting') {
+            this.guessInput.disabled = true;
+            this.guessBtn.disabled = true;
+            
+            if (this.isMaster) {
+                // Enable master controls for new round
+                this.questionInput.disabled = false;
+                this.answerInput.disabled = false;
             }
         } else {
             this.guessInput.disabled = true;
@@ -336,19 +357,15 @@ class GuessingGame {
         this.guessBtn.disabled = true;
     }
 
-    resetForNextRound() {
+    resetAttempts() {
         this.attempts = 0;
         this.attemptsInfo.style.display = 'none';
         
-        setTimeout(() => {
-            this.addMessage('Waiting for the next round...', 'system');
-            
-            // Re-enable controls for the next round
-            if (this.isMaster) {
-                this.questionInput.disabled = false;
-                this.answerInput.disabled = false;
-            }
-        }, 3000);
+        // Re-enable guessing for non-masters
+        if (!this.isMaster) {
+            this.guessInput.disabled = false;
+            this.guessBtn.disabled = false;
+        }
     }
 
     updateAttemptsDisplay(attemptsLeft) {
