@@ -1,5 +1,6 @@
 const GameSession = require('../models/GameSession');
 const { v4: uuidv4 } = require('uuid');
+const { generateUniqueGameId } = require('../utils/idGenerator');
 
 // In-memory storage for game sessions
 const gameSessions = new Map();
@@ -17,8 +18,9 @@ class GameController {
         });
       }
 
-      const sessionId = uuidv4();
-      const masterId = uuidv4();
+      // Generate short game ID instead of UUID
+      const sessionId = generateUniqueGameId(gameSessions);
+      const masterId = uuidv4(); // Still use UUID for player IDs (internal)
       const gameSession = new GameSession(sessionId, masterId, playerName.trim());
       
       gameSessions.set(sessionId, gameSession);
@@ -55,7 +57,10 @@ class GameController {
         });
       }
 
-      const gameSession = gameSessions.get(sessionId);
+      // Convert to uppercase for case-insensitive lookup
+      const normalizedSessionId = sessionId.toUpperCase();
+      const gameSession = gameSessions.get(normalizedSessionId);
+      
       if (!gameSession) {
         return res.status(404).json({
           success: false,
@@ -96,7 +101,10 @@ class GameController {
     try {
       const { sessionId } = req.params;
       
-      const gameSession = gameSessions.get(sessionId);
+      // Convert to uppercase for case-insensitive lookup
+      const normalizedSessionId = sessionId.toUpperCase();
+      const gameSession = gameSessions.get(normalizedSessionId);
+      
       if (!gameSession) {
         return res.status(404).json({
           success: false,
@@ -133,7 +141,10 @@ class GameController {
         });
       }
 
-      const gameSession = gameSessions.get(sessionId);
+      // Convert to uppercase for case-insensitive lookup
+      const normalizedSessionId = sessionId.toUpperCase();
+      const gameSession = gameSessions.get(normalizedSessionId);
+      
       if (!gameSession) {
         return res.status(404).json({
           success: false,
@@ -180,7 +191,10 @@ class GameController {
       const { sessionId } = req.params;
       const { playerId } = req.body;
 
-      const gameSession = gameSessions.get(sessionId);
+      // Convert to uppercase for case-insensitive lookup
+      const normalizedSessionId = sessionId.toUpperCase();
+      const gameSession = gameSessions.get(normalizedSessionId);
+      
       if (!gameSession) {
         return res.status(404).json({
           success: false,
@@ -234,7 +248,10 @@ class GameController {
         });
       }
 
-      const gameSession = gameSessions.get(sessionId);
+      // Convert to uppercase for case-insensitive lookup
+      const normalizedSessionId = sessionId.toUpperCase();
+      const gameSession = gameSessions.get(normalizedSessionId);
+      
       if (!gameSession) {
         return res.status(404).json({
           success: false,
@@ -264,12 +281,16 @@ class GameController {
 
   // Get game session by ID (for internal use)
   static getGameSession(sessionId) {
-    return gameSessions.get(sessionId);
+    // Convert to uppercase for case-insensitive lookup
+    const normalizedSessionId = sessionId.toUpperCase();
+    return gameSessions.get(normalizedSessionId);
   }
 
   // Remove game session
   static removeGameSession(sessionId) {
-    return gameSessions.delete(sessionId);
+    // Convert to uppercase for case-insensitive lookup  
+    const normalizedSessionId = sessionId.toUpperCase();
+    return gameSessions.delete(normalizedSessionId);
   }
 
   // Get all active sessions (for debugging)

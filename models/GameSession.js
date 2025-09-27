@@ -2,7 +2,8 @@ const { v4: uuidv4 } = require('uuid');
 
 class GameSession {
   constructor(sessionId, masterId, masterName) {
-    this.id = sessionId || uuidv4();
+    // Use provided sessionId (short ID) instead of generating UUID
+    this.id = sessionId;
     this.masterId = masterId;
     this.masterName = masterName;
     this.players = new Map();

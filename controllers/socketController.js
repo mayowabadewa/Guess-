@@ -205,76 +205,15 @@ function handleSocketConnections(io) {
       }
     });
 
-    // Leave session
+    // Leave session - explicit leave
     socket.on('leave-session', () => {
-      try {
-        if (socket.sessionId && socket.playerId) {
-          const gameSession = GameController.getGameSession(socket.sessionId);
-          if (gameSession) {
-            const wasCurrentMaster = gameSession.masterId === socket.playerId;
-            const isEmpty = gameSession.removePlayer(socket.playerId);
-            
-            if (isEmpty) {
-              // Delete session if no players left
-              GameController.removeGameSession(socket.sessionId);
-              console.log(`Session ${socket.sessionId} deleted - no players left`);
-            } else {
-              // Notify remaining players
-              io.to(socket.sessionId).emit('player-left', {
-                gameState: gameSession.getGameState()
-              });
-
-              // If the master left and a new one was assigned, notify players
-              if (wasCurrentMaster && gameSession.masterId !== socket.playerId) {
-                io.to(socket.sessionId).emit('new-master-assigned', {
-                  newMaster: gameSession.masterName,
-                  gameState: gameSession.getGameState()
-                });
-              }
-            }
-          }
-          
-          socket.leave(socket.sessionId);
-          console.log(`Player ${socket.playerId} left session ${socket.sessionId}`);
-        }
-      } catch (error) {
-        console.error('Error leaving session:', error);
-      }
+      handlePlayerLeaving(socket, io, false); // false = explicit leave
     });
 
-    // Handle disconnect
+    // Handle disconnect - automatic disconnect
     socket.on('disconnect', () => {
-      try {
-        if (socket.sessionId && socket.playerId) {
-          const gameSession = GameController.getGameSession(socket.sessionId);
-          if (gameSession) {
-            const wasCurrentMaster = gameSession.masterId === socket.playerId;
-            const isEmpty = gameSession.removePlayer(socket.playerId);
-            
-            if (isEmpty) {
-              // Delete session if no players left
-              GameController.removeGameSession(socket.sessionId);
-              console.log(`Session ${socket.sessionId} deleted - no players left`);
-            } else {
-              // Notify remaining players
-              socket.to(socket.sessionId).emit('player-left', {
-                gameState: gameSession.getGameState()
-              });
-
-              // If the master left and a new one was assigned, notify players
-              if (wasCurrentMaster && gameSession.masterId !== socket.playerId) {
-                socket.to(socket.sessionId).emit('new-master-assigned', {
-                  newMaster: gameSession.masterName,
-                  gameState: gameSession.getGameState()
-                });
-              }
-            }
-          }
-        }
-        console.log('User disconnected:', socket.id);
-      } catch (error) {
-        console.error('Error handling disconnect:', error);
-      }
+      console.log('User disconnected:', socket.id);
+      handlePlayerLeaving(socket, io, true); // true = disconnect
     });
 
     // Get current game state
@@ -296,6 +235,53 @@ function handleSocketConnections(io) {
       }
     });
   });
+}
+
+// Centralized function to handle player leaving - prevents double notifications
+function handlePlayerLeaving(socket, io, isDisconnect = false) {
+  try {
+    // Prevent double processing if already handled
+    if (socket.isLeaving) {
+      return;
+    }
+    socket.isLeaving = true;
+
+    if (socket.sessionId && socket.playerId) {
+      const gameSession = GameController.getGameSession(socket.sessionId);
+      if (gameSession) {
+        const wasCurrentMaster = gameSession.masterId === socket.playerId;
+        const playerName = gameSession.players.get(socket.playerId)?.name || 'Unknown Player';
+        const isEmpty = gameSession.removePlayer(socket.playerId);
+        
+        if (isEmpty) {
+          // Delete session if no players left
+          GameController.removeGameSession(socket.sessionId);
+          console.log(`Session ${socket.sessionId} deleted - no players left`);
+        } else {
+          // Notify remaining players
+          const eventType = isDisconnect ? 'player-disconnected' : 'player-left';
+          io.to(socket.sessionId).emit(eventType, {
+            playerName: playerName,
+            gameState: gameSession.getGameState()
+          });
+
+          // If the master left and a new one was assigned, notify players
+          if (wasCurrentMaster && gameSession.masterId !== socket.playerId) {
+            io.to(socket.sessionId).emit('new-master-assigned', {
+              newMaster: gameSession.masterName,
+              gameState: gameSession.getGameState()
+            });
+          }
+        }
+      }
+      
+      socket.leave(socket.sessionId);
+      const actionType = isDisconnect ? 'disconnected from' : 'left';
+      console.log(`Player ${socket.playerId} ${actionType} session ${socket.sessionId}`);
+    }
+  } catch (error) {
+    console.error('Error handling player leaving:', error);
+  }
 }
 
 module.exports = { handleSocketConnections };
