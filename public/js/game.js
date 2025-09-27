@@ -137,24 +137,24 @@ class GuessingGame {
             this.showError(data.message);
         });
 
+        // MODIFICATION: Using a more targeted function to avoid wiping inputs
         this.socket.on('player-joined', (data) => {
-            this.updateGameState(data.gameState);
+            this.updatePlayerInfo(data.gameState);
             this.addMessage('A player joined the game', 'system');
         });
 
+        // MODIFICATION: Using a more targeted function to avoid wiping inputs
         this.socket.on('player-left', (data) => {
-            this.updateGameState(data.gameState);
+            this.updatePlayerInfo(data.gameState);
             this.addMessage('A player left the game', 'system');
         });
 
-        // Fixed event handler for master assignment
         this.socket.on('new-master-assigned', (data) => {
             console.log('New master assigned:', data);
             this.updateGameState(data.gameState);
             
             if (data.gameState.masterId === this.playerId) {
                 this.addMessage(`🎭 You are now the game master! Set a question to start the next round.`, 'master');
-                // Clear previous question/answer when becoming master
                 this.questionInput.value = '';
                 this.answerInput.value = '';
                 this.startGameBtn.disabled = true;
@@ -163,10 +163,15 @@ class GuessingGame {
             }
         });
 
+        // MODIFICATION: Added logic to clear inputs only on server confirmation
         this.socket.on('question-set', (data) => {
             this.updateGameState(data.gameState);
             this.startGameBtn.disabled = !data.canStart;
             this.addMessage('Question set! You can now start the game.', 'master');
+
+            // Clear inputs ONLY after server confirms success
+            this.questionInput.value = '';
+            this.answerInput.value = '';
         });
 
         this.socket.on('question-prepared', (data) => {
@@ -230,15 +235,18 @@ class GuessingGame {
         this.gameArea.style.display = 'flex';
         this.sessionInfo.textContent = `Session: ${this.currentSession}`;
     }
+    
+    // NEW FUNCTION: Only updates player list and count
+    updatePlayerInfo(gameState) {
+        this.playerCount.textContent = gameState.playerCount;
+        this.updatePlayersList(gameState.players);
+    }
 
     updateGameState(gameState) {
         this.isMaster = gameState.masterId === this.playerId;
         
-        // Update player count
-        this.playerCount.textContent = gameState.playerCount;
-        
-        // Update players list
-        this.updatePlayersList(gameState.players);
+        // Update player count and list
+        this.updatePlayerInfo(gameState);
         
         // Show/hide master controls
         this.masterControls.style.display = this.isMaster ? 'block' : 'none';
@@ -256,7 +264,6 @@ class GuessingGame {
             this.guessBtn.disabled = true;
             
             if (this.isMaster) {
-                // Enable master controls for new round
                 this.questionInput.disabled = false;
                 this.answerInput.disabled = false;
             }
@@ -302,8 +309,7 @@ class GuessingGame {
             answer: answer
         });
 
-        this.questionInput.value = '';
-        this.answerInput.value = '';
+        // MODIFICATION: Removed premature input clearing from here
     }
 
     startGame() {
@@ -361,7 +367,6 @@ class GuessingGame {
         this.attempts = 0;
         this.attemptsInfo.style.display = 'none';
         
-        // Re-enable guessing for non-masters
         if (!this.isMaster) {
             this.guessInput.disabled = false;
             this.guessBtn.disabled = false;
@@ -397,18 +402,15 @@ class GuessingGame {
                 this.socket.disconnect();
             }
             
-            // Reset to welcome screen
             this.gameArea.style.display = 'none';
             this.welcomeScreen.style.display = 'block';
             
-            // Reset all values
             this.currentSession = null;
             this.playerId = null;
             this.playerName = null;
             this.isMaster = false;
             this.attempts = 0;
             
-            // Clear inputs
             this.playerNameInput.value = '';
             this.sessionIdInput.value = '';
             this.messagesContainer.innerHTML = '';
@@ -418,7 +420,6 @@ class GuessingGame {
     }
 }
 
-// Global functions for HTML onclick events
 let game;
 
 function createOrJoinGame() {
@@ -442,7 +443,6 @@ function leaveGame() {
     if (game) game.leaveGame();
 }
 
-// Initialize game when page loads
 document.addEventListener('DOMContentLoaded', () => {
     console.log('Guessing Game initialized');
 });
